@@ -1,0 +1,606 @@
+\documentclass{article}[11pt]
+
+
+%\usepackage{tabto}
+%\usepackage{amsthm}
+%\usepackage{amsmath, amsthm, amssymb, amsfonts}
+
+
+\usepackage{minted}
+
+\usepackage{amsmath, amsthm, amssymb, amsfonts}
+\usepackage{tabto}
+
+\pagestyle{empty}
+
+\textheight 9.1in
+\textwidth 6.5in \oddsidemargin -0.1in \evensidemargin -0.1in
+\topmargin -0.3in
+
+\begin{document}
+
+\vspace{.1in}
+
+\centerline{\textbf{Purdue Farmers Market App API Documentation}} \bigskip
+
+\textbf{Important: } \\ All API requests should be made to a server that is running the software under the path "http://ip:port/api/" (note the /api/). So, for example, if a api endpoint is specified in this document to have a location of "/user/login", that request should be sent to "http://ip:port/api/user/login". \\
+
+\textbf{Basic Data IO:} \\
+The API requests work via sending and receiving JSON data through HTTP POST requests. All request parameters should be sent under the HTTP request body, and response data will always be sent in the following format (if the page is valid):
+
+\begin{minted}[frame=single,
+               framesep=3mm,
+               linenos=true,
+               xleftmargin=21pt,
+               tabsize=4]{ts}
+{
+    success: boolean,
+    needLogin: boolean, // Will be set to true if login is needed
+                        // but a valid session_full_code was not provided.
+    errorCode: string, // Only will be here if success = false
+    data: { <page-response-data> } // Only will be here if success = true
+}
+\end{minted}
+
+There are two potential types of errors that can occur and result in an unsuccessful request. Exceptions and Failures. Exceptions are server-side problems that are most likely the result of a bug. Please contact the developer with the code to fix them. Failures are errors that occur because of invalid input parameters. Likely a field is missing or invalid, causing the failure to occur. Only occasionally will failures be the result of a server-side problem. \\
+
+Whenever an API endpoint has response parameters specified, they will be contained inside the "data" json object (in line 6 above). If it does not specify any response parameters, the "data" json object will be null, and you can get the result of the operation from the "success" boolean. \\
+
+\newpage
+
+\textbf{API Request/Response Example} \\
+
+As an example, if a login request was sent (see /user/login), you would send
+
+\begin{minted}[frame=single,
+               framesep=3mm,
+               linenos=true,
+               xleftmargin=21pt,
+               tabsize=4]{ts}
+{
+    email_address: "test@example.com",
+    password: "secr3t_p3sw0rd",
+}
+\end{minted}
+
+And the response from the server would be
+\begin{minted}[frame=single,
+               framesep=3mm,
+               linenos=true,
+               xleftmargin=21pt,
+               tabsize=4]{ts}
+{
+    success: true,
+    needLogin: false,
+    errorCode: null,
+    data: {
+    	session_full_code: "1:facc853ea87acdf26852088777f33035",
+    	user_id: 1,
+    	email_address: "test@example.com",
+    	name: "User"
+    }
+}
+\end{minted}
+
+But, if an error was to occur, the response would be
+\begin{minted}[frame=single,
+               framesep=3mm,
+               linenos=true,
+               xleftmargin=21pt,
+               tabsize=4]{ts}
+{
+    success: false,
+    needLogin: false,
+    errorCode: "LI-1",
+    data: null
+}
+\end{minted}
+
+This is the basics of the API request/response structure.
+
+\newpage
+
+
+\newcommand{\ErrorsBasic}{
+
+\noindent
+\textbf{Error Codes:} \\
+W-0: Failure - Empty or null request body \\
+}
+
+\newcommand{\ErrorsMysql}{
+\ErrorsBasic
+W-1: Exception - An unknown error occurred in connecting to the database.  \\
+W-2: Exception - An unknown error occurred in the server.  \\
+}
+
+\newcommand{\ErrorsSession}{
+\ErrorsMysql
+W-3: Failure - session\_full\_code was empty or null.  \\
+W-4: Failure - session\_full\_code was invalid. Make sure its a valid session code received from /user/login.  \\
+W-5: Exception - An unknown error occurred in the server.  \\
+W-6: Exception - An unknown error occurred in finding the session.  \\
+}
+
+
+
+
+\noindent
+\textbf{\underline{Directories and API Endpoints}} \\
+
+\paragraph{/user}\textbf{ (Directory) }
+
+All API endpoints related to user accounts and session will go here.
+
+
+\paragraph{/user/login}\textbf{}
+
+Used for logging in and creating a user session with the given user account. \\
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+email\_address & string & Yes & The email address of the user you wish to login as \\
+\hline
+password & string & Yes & The associated password for the user with the specified email \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Notes} \\
+\hline
+session\_full\_code & string & The session code used for accessing methods specific to the user you are logged in as. \\
+& & Store this code in order to access other api endpoints that require a session code. \\
+user\_id & int & The id of the user \\
+email\_address & string & The email address of the user \\
+name & string & The name of the user \\
+profile\_picture & blob & The profile picture of the user \\
+phone\_number & string & The phone number of the user \\
+user\_type & string & The type of the user will be either "vendor" or "customer" \\
+user\_is\_vendor & int & Represents if the user is a vendor (1 if so) \\
+vendor\_id & int & The vendor id of the user, if applicable \\
+\hline
+\end{tabular} \\
+
+\ErrorsMysql
+LI-1: Failure - Invalid email or password. \\
+LI-2: Exception - An unknown error occurred in creating a session. \\
+LI-3: Exception - An unknown error occurred in finding a user.
+
+
+
+\paragraph{/user/logout}\textbf{}
+
+Used to logout from the server. Attempting to use the session\_full\_code after getting a success from this endpoint will result in an authentication error.  \\
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+session\_full\_code & string & Yes & The session code for the session you wish to logout of \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+None. Will return success if successful. \\
+
+\ErrorsSession
+LO-1: Exception - An unknown error occurred in logging out.
+
+\newpage
+
+\paragraph{/user/signup}\textbf{}
+
+Used to create an account that can be used for logging in.  \\
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+email\_address & string & Yes & Email address (must be unique) \\
+\hline
+name & string & Yes & The first and last name of the user, will be shown to others. \\
+\hline
+password & string & Yes & Password used to log in. \\
+\hline
+user\_type & "consumer" $\vert$ "vendor" & Yes & The type of the user, can either be normal user or vendor. \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+None. Will return success if successful. \\
+
+\ErrorsMysql
+SU-1: Failure - One of the parameters is missing/empty. \\
+SU-2: Failure - A user with that email address already exists. \\
+SU-3: Exception - An unknown error occurred in creating the user. \\
+SU-4: Exception - An unknown error occurred in looking for a duplicate.
+
+
+\paragraph{/user/verifysession}\textbf{}
+
+Attempts to validate if the session you are using is valid or not. Returns success if session is valid and user is properly logged in. \\
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+session\_full\_code & string & Yes & The session code for the session you wish to check \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+None. Will return success if successful. \\
+
+\ErrorsSession
+
+
+\paragraph{/user/updatesettings}\textbf{}
+
+Used to update the settings of the user that sends the request. Used for changing name, profile picture, etc. \\
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+session\_full\_code & string & Yes & The session code for the session you wish to use \\
+email\_address & string & No & The new email address of the user \\
+name & string & No & The new name for the user \\
+profile\_picture & blob & No & The new profile picture for the user \\
+phone\_number & string & No & The new phone number for the user \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+None. Will return success if successful. \\
+
+\ErrorsSession
+UUS-1: Failure - Didn't give any fields to update (must have atleast 1)
+UUS-2: Exception - An unknown error occurred in updating the settings.
+
+
+\paragraph{/user/getuserinfo}\textbf{}
+
+Used to get the information of a specific user. \\
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+user\_id & int & Yes & The id of the user you wish to get the information of. \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Notes} \\
+\hline
+user\_id & int & The id of the user \\
+email\_address & string & The email address of the user \\
+name & string & The name of the user \\
+profile\_picture & blob & The profile picture of the user \\
+phone\_number & string & The phone number of the user \\
+user\_type & string & The type of the user. Will only be "vendor" $\vert$ "customer" \\
+user\_is\_vendor & int & Represents if the user is a vendor (1 if so) \\
+vendor\_id & int & The vendor id of the user, if applicable \\
+\hline
+\end{tabular} \\
+
+\ErrorsSession
+UUS-1: Failure - Didn't give any fields to update (must have atleast 1)
+UUS-2: Exception - An unknown error occurred in updating the settings.
+
+
+\newpage
+
+\paragraph{/vendors}\textbf{ (Directory) }
+
+All API endpoints related to vendors will go here. Including account managemenet for vendors and general vendor information requests.
+
+\paragraph{/vendors/getvendors}\textbf{}
+
+Gets a list of all of the vendors. If the search name is specified, it will filter it.
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+search\_name & string & No & The name to filter by. \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+
+\noindent
+The response will be an array containing items with the following structure.
+
+\noindent
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Notes} \\
+\hline
+vendor\_id & int & The id of the vendor. \\
+slogan & string & The slogan of the vendor. \\
+name & string & The name of the vendor \\
+profile\_picture & blob & The profile picture of the vendor. \\
+longitude & double & The longitude of the vendor. \\
+latitude & double & The latitude of the vendor. \\
+\hline
+\end{tabular} \\
+
+\ErrorsSession
+GV-1: Exception - An unknown error occurred in getting the list of vendors. \\
+
+
+
+\paragraph{/vendors/getvendorinfo}\textbf{}
+
+Gets the information for a specific vendor by their id.
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+vendor\_id & int & Yes & The id of the vendor to get the information of. \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+
+\noindent
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Notes} \\
+\hline
+slogan & string & The slogan of the vendor. \\
+name & string & The name of the vendor \\
+description & string & The description of the vendor. \\
+profile\_picture & blob & The profile picture of the vendor. \\
+background\_picture & blob & The background picture of the vendor. \\
+longitude & double & The longitude of the vendor. \\
+latitude & double & The latitude of the vendor. \\
+\hline
+\end{tabular} \\
+
+\ErrorsSession
+GV-1: Failure - No vendor id was given. \\
+GV-2: Failure - The given vendor id does not correspond to a vendor. \\
+GV-3: Exception - An unknown error occurred in getting the vendor information. \\
+
+
+\paragraph{/vendors/updatesettings}\textbf{}
+
+Used to update the settings of the vendor that sends the request. Used for changing slogan, description, background picture, etc. \\
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+session\_full\_code & string & Yes & The session code for the session you wish to use \\
+description & string & No & The new description for the vendor \\
+background\_picture & string & No & The new background picture for the vendor \\
+longitude & blob & No & The new longitude for the vendor \\
+latitude & string & No & The new latitude for the vendor \\
+slogan & string & No & The new slogan for the vendor \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+None. Will return success if successful. \\
+
+\ErrorsSession
+VUS-1: Failure - User is not a vendor.
+VUS-2: Failure - Didn't give any fields to update (must have atleast 1)
+VUS-3: Exception - The user doesn't seem to exist, even though they are supposed to be a vendor.
+VUS-4: Exception - An unknown error occurred in updating the settings.
+VUS-5: Exception - An unknown error occurred.
+
+
+
+\newpage
+
+\paragraph{/goods}\textbf{ (Directory) }
+
+All API endpoints related to goods that are sold by a vendor will go here. A vendor will send their goods with /vendor/getvendorinfo, but this can be used for general good lists, information, and management.
+
+\paragraph{/goods/getgoods}\textbf{}
+
+Gets a list of all of the goods. If the search name is specified, it will filter it.
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+name & string & Yes & The name to filter goods by. \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+
+\noindent
+The response will be an array containing goods with the follow structure.
+
+\noindent
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Notes} \\
+\hline
+good\_id & number & The Good's id. \\
+vendor\_id & number & The id of the good's vendor. \\
+description & string & The description of the good. \\
+name & string & The name of the good. \\
+stock & number & The stock of the good. \\
+picture & blob & The picture of the good. \\
+good\_type & number & Number representing type of good. \\
+\hline
+\end{tabular} \\
+
+\ErrorsSession
+GG-1: Exception - An unknown error occurred in getting the list of goods. \\
+
+\paragraph{/goods/getgoodinfo}\textbf{}
+
+Gets the information for a specific good by its id.
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+good\_id & int & Yes & The id of the good to get its information. \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+
+\noindent
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Notes} \\
+\hline
+good\_id & number & The Good's id. \\
+vendor\_id & number & The id of the good's vendor. \\
+description & string & The description of the good. \\
+name & string & The name of the good. \\
+stock & number & The stock of the good. \\
+picture & blob & The picture of the good. \\
+good\_type & number & Number representing type of good. \\
+\hline
+\end{tabular} \\
+
+\ErrorsSession
+GGI-1: Failure - No good\_id was given. \\
+GGI-2: Failure - The given good id does not correspond to a good. \\
+GGI-3: Exception - An unknown error occurred in getting the good information. \\
+
+\paragraph{/goods/addgood}\textbf{}
+
+Adds a good to the database.
+
+\noindent
+Request Parameters:
+
+\noindent
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+session\_full\_code & string & Yes & The code for the session of the vendor adding the good. \\
+name & string & Yes & Name of the good. \\
+description & string & Yes & A description of the good. \\
+picture & string & Yes & A picture of the good. \\
+stock & int & Yes & The number of that good. \\
+good\_type & int & Yes & A value representing the good type. \\
+\hline
+\end{tabular} \\
+
+\noindent
+Response Parameters: \\
+None. Will return success if successful. \\
+
+\ErrorsSession
+AG-1: Failure - The name or description is invalid. \\
+AG-2: Exception - An unknown error happened while creating good. \\
+
+
+
+\paragraph{/goods/updategood}\textbf{}
+
+Updates a good's attributes to the database.
+
+\noindent
+Request Parameters:
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Name} & \textbf{Type} & \textbf{Required} & \textbf{Notes} \\
+\hline
+good\_id & int & Yes & The id of the good to be changed. \\
+description & string & Yes & Description of Good. \\
+name & string & Yes & The name of the good. \\
+picture & string & Yes & A picture of the good. \\
+stock & int & Yes & The number of that good. \\
+good\_type & int & Yes & A value representing the good type. \\
+\hline
+\end{tabular} \\
+
+\noindent
+
+\noindent
+Response Parameters: \\
+None. Will return success if successful. \\
+
+\ErrorsSession
+UG-1: Failure - No values were found. Must input atleast one. \\
+UG-2: Exception - Unable to edit good in the database. \\
+
+
+
+
+
+
+
+
+\end{document}
